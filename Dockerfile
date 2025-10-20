@@ -1,15 +1,16 @@
 FROM apache/superset:latest
 
+# Switch to root user for system installs
 USER root
 WORKDIR /app
 
-# Install system dependencies for psycopg2
+# Install PostgreSQL libraries and compiler
 RUN apt-get update && apt-get install -y libpq-dev gcc curl && rm -rf /var/lib/apt/lists/*
 
-# Install psycopg2 INSIDE Superset's venv
-RUN /app/.venv/bin/pip install --no-cache-dir --upgrade pip psycopg2-binary
+# Install psycopg2 using Superset's Python (works even if venv isn’t yet created)
+RUN python3 -m pip install --no-cache-dir --upgrade pip psycopg2-binary
 
-# Copy Superset config
+# Copy your Superset config
 COPY superset_config.py /app/superset_config.py
 
 # Environment variables
@@ -19,12 +20,12 @@ ENV SUPERSET_PORT=8088
 ENV SUPERSET_LOAD_EXAMPLES=no
 ENV SUPERSET_CONFIG_PATH=/app/superset_config.py
 
-EXPOSE 8088
-
 # Health check for Render
 HEALTHCHECK --interval=30s --timeout=10s --retries=5 CMD curl -f http://localhost:8088/health || exit 1
 
+EXPOSE 8088
+
 # Initialize & start Superset
-CMD /app/.venv/bin/superset db upgrade && \
-    /app/.venv/bin/superset init && \
-    /app/.venv/bin/gunicorn --bind 0.0.0.0:8088 "superset.app:create_app()"
+CMD superset db upgrade && \
+    superset init && \
+    gunicorn --bind 0.0.0.0:8088 "superset.app:create_app()"
