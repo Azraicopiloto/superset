@@ -24,7 +24,8 @@ ENV SUPERSET_CONFIG_PATH=/app/superset_config.py
 EXPOSE 8088
 
 # Initialize DB, create admin user (if not exists), and start Superset
-CMD superset db upgrade && \
+CMD rm -f /app/superset_home/superset.db && \
+    superset db upgrade && \
     superset fab create-admin \
         --username admin \
         --firstname Admin \
