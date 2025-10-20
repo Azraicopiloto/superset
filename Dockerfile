@@ -1,18 +1,18 @@
 FROM apache/superset:latest
 
-WORKDIR /app
-
+# Switch to root to install system packages
 USER root
 
-# Install PostgreSQL build deps first
+# Set working directory
+WORKDIR /app
+
+# Install PostgreSQL libraries
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
-# Activate Superset's venv and install psycopg2 inside it
-RUN . /app/.venv/bin/activate && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir psycopg2-binary
+# Install psycopg2-binary directly inside Superset’s virtual environment
+RUN /app/.venv/bin/pip install --no-cache-dir --upgrade pip psycopg2-binary
 
-# Copy your custom config
+# Copy your config file
 COPY superset_config.py /app/superset_config.py
 
 # Environment variables
@@ -24,8 +24,7 @@ ENV SUPERSET_CONFIG_PATH=/app/superset_config.py
 
 EXPOSE 8088
 
-# Initialize & start Superset
-CMD . /app/.venv/bin/activate && \
-    superset db upgrade && \
-    superset init && \
-    gunicorn --bind 0.0.0.0:8088 "superset.app:create_app()"
+# Run Superset initialization and start Gunicorn
+CMD /app/.venv/bin/superset db upgrade && \
+    /app/.venv/bin/superset init && \
+    /app/.venv/bin/gunicorn --bind 0.0.0.0:8088 "superset.app:create_app()"
