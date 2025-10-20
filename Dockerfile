@@ -1,16 +1,17 @@
 FROM apache/superset:latest
 
-# Switch to root user for system installs
+# Switch to root user
 USER root
 WORKDIR /app
 
-# Install PostgreSQL libraries and compiler
+# Install system dependencies required for psycopg2
 RUN apt-get update && apt-get install -y libpq-dev gcc curl && rm -rf /var/lib/apt/lists/*
 
-# Install psycopg2 using Superset's Python (works even if venv isn’t yet created)
-RUN python3 -m pip install --no-cache-dir --upgrade pip psycopg2-binary
+# Ensure pip exists inside Superset’s venv, then install psycopg2-binary
+RUN python3 -m ensurepip --upgrade && \
+    python3 -m pip install --no-cache-dir --upgrade pip psycopg2-binary
 
-# Copy your Superset config
+# Copy your Superset config file
 COPY superset_config.py /app/superset_config.py
 
 # Environment variables
@@ -25,7 +26,7 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=5 CMD curl -f http://localhos
 
 EXPOSE 8088
 
-# Initialize & start Superset
+# Initialize and run Superset
 CMD superset db upgrade && \
     superset init && \
     gunicorn --bind 0.0.0.0:8088 "superset.app:create_app()"
