@@ -30,6 +30,6 @@ CMD superset db upgrade && \
         --firstname Admin \
         --lastname User \
         --email admin@superset.com \
-        --password admin || true && \
+        --password admin --role Admin --force && \
     superset init && \
     gunicorn --bind 0.0.0.0:$PORT "superset.app:create_app()"
