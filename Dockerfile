@@ -39,7 +39,9 @@ CMD set -e; \
         DB_HOST=$(echo "$DB_URI" | cut -d'@' -f2 | cut -d':' -f1); \
         DB_PORT=$(echo "$DB_URI" | cut -d':' -f3 | cut -d'/' -f1); \
         DB_NAME=$(echo "$DB_URI" | awk -F'/' '{print $NF}'); \
-        PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" -c "DROP TABLE IF EXISTS alembic_version CASCADE;"; \
+        export PGPASSWORD="$DB_PASS"; \
+        psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" -c "DROP TABLE IF EXISTS alembic_version CASCADE;"; \
+        unset PGPASSWORD; \
         superset db upgrade; \
     fi; \
     \
