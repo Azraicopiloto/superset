@@ -3,7 +3,6 @@ set -e
 
 echo "🚀 Starting Superset setup..."
 
-# Optional schema reset only if you intentionally enable it
 if [[ "$FORCE_RESET" == "1" ]]; then
   echo "⚠️ FORCE_RESET detected — dropping and recreating schema..."
   PSQL_COMPATIBLE_URL="${DATABASE_URL/+psycopg2/}"
@@ -25,9 +24,8 @@ superset fab create-admin \
 echo "✨ Initializing Superset roles and permissions..."
 superset init
 
-# Load sample dashboards/datasets on first setup (harmless if repeated)
-echo "📊 Loading example data..."
-superset load_examples || true
+# ⚠️ Skip loading example data (uses too much memory)
+echo "⏭️ Skipping example dataset load to save memory..."
 
 echo "🌐 Starting Superset on port ${PORT:-8088}"
-exec gunicorn --bind "0.0.0.0:${PORT:-8088}" --workers 3 --timeout 300 "superset.app:create_app()"
+exec gunicorn --bind "0.0.0.0:${PORT:-8088}" --workers 2 --timeout 300 "superset.app:create_app()"
