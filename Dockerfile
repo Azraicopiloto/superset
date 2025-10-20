@@ -35,9 +35,9 @@ EXPOSE 8088
 # Command: reset schema (optional), upgrade DB, create admin, start server
 # ---------------------------
 CMD if [ "$DB_RESET" = "1" ]; then \
-      echo "⚠️  Resetting PostgreSQL public schema..."; \
-      psql "$DATABASE_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"; \
-    fi && \
+  echo "⚠️  Resetting PostgreSQL public schema..."; \
+  psql "$PSQL_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"; \
+fi && \
     echo "🚀 Running DB migrations..." && \
     superset db upgrade && \
     echo "👤 Creating admin user..." && \
