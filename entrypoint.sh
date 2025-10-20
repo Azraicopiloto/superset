@@ -1,24 +1,19 @@
-#!/usr/bin/env bash
-# Exit immediately if a command exits with a non-zero status
+#!/bin/bash
 set -e
 
-echo "🚀 Starting Superset setup..."
+echo "⚠️ FORCE_RESET detected — dropping and recreating schema..."
 
-# Only run the reset logic if FORCE_RESET is set to '1'
-if [[ "$FORCE_RESET" == "1" ]]; then
-  echo "⚠️ FORCE_RESET detected — dropping and recreating schema..."
+# Your app's DATABASE_URL might be like: postgresql+psycopg2://user:pass@host/db
+# We need to remove the "+psycopg2" part for psql to use it.
+PSQL_URL="${DATABASE_URL/+psycopg2/}"
 
-  # Superset's DATABASE_URL is like: postgresql+psycopg2://...
-  # psql needs a standard URI like: postgresql://...
-  # This command removes the '+psycopg2' part for psql compatibility.
-  # The quotes around the variables are crucial for handling special characters.
-  PSQL_COMPATIBLE_URL="${DATABASE_URL/+psycopg2/}"
+# Now, execute the command using the full URI.
+# The quotes are crucial to handle special characters in the password.
+psql "$PSQL_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
-  # Execute the schema reset using the compatible URL.
-  # This single command is all that's needed for authentication.
-  psql "$PSQL_COMPATIBLE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-  
-  echo "✅ Schema reset successfully."
+echo "✅ Schema reset successfully."
+
+# ...continue with the rest of your script (e.g., superset db upgrade)
 fi
 
 echo "🧩 Running migrations..."
