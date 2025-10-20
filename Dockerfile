@@ -4,7 +4,7 @@ ENV SUPERSET_HOME=/app/superset_home
 ENV FLASK_ENV=production
 ENV SUPERSET_PORT=8088
 ENV SUPERSET_LOAD_EXAMPLES=no
-ENV SUPERSET_CONFIG_PATH=${SUPERSET_CONFIG_PATH}
+ENV SUPERSET_CONFIG_PATH= /app/superset_config.py
 EXPOSE 8088
 CMD superset db upgrade && \
     superset init && \
