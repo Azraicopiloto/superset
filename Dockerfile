@@ -38,11 +38,13 @@ CMD \
     DB_PORT=$(echo "$DB_URI" | cut -d':' -f3 | cut -d'/' -f1) && \
     DB_NAME=$(echo "$DB_URI" | awk -F'/' '{print $NF}') && \
     \
-    # Optional reset
     if [ "$DB_RESET" = "1" ]; then \
-      echo "⚠️  Resetting PostgreSQL schema on $DB_HOST:$DB_PORT/$DB_NAME..."; \
-      PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" \
-        -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"; \
+      echo "⚠️  Force-resetting PostgreSQL public schema..."; \
+      PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" <<'SQL'
+      DROP TABLE IF EXISTS alembic_version CASCADE;
+      DROP SCHEMA IF EXISTS public CASCADE;
+      CREATE SCHEMA public;
+      SQL
     fi && \
     \
     echo "🚀 Running DB migrations..." && \
@@ -59,3 +61,4 @@ CMD \
     superset init && \
     echo "🌐 Starting Gunicorn..." && \
     gunicorn --bind 0.0.0.0:${PORT:-8088} "superset.app:create_app()"
+
