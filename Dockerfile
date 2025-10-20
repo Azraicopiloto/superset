@@ -1,19 +1,18 @@
-FROM apache/superset:latest
+FROM apache/superset:3.1.2
 
-# Switch to root to install system dependencies
 USER root
 WORKDIR /app
 
-# Install PostgreSQL development libraries
-RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+# Lightweight install
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq-dev gcc && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install psycopg2 INSIDE Superset's virtual environment
-RUN /app/.venv/bin/python -m pip install --no-cache-dir --upgrade pip psycopg2-binary
+# Install inside Superset's venv
+RUN /app/.venv/bin/python -m pip install --no-cache-dir --upgrade pip psycopg2-binary Pillow
 
-# Copy your Superset config
 COPY superset_config.py /app/superset_config.py
 
-# Set environment variables
 ENV SUPERSET_HOME=/app/superset_home
 ENV FLASK_ENV=production
 ENV SUPERSET_PORT=8088
@@ -22,7 +21,6 @@ ENV SUPERSET_CONFIG_PATH=/app/superset_config.py
 
 EXPOSE 8088
 
-# Initialize DB, create admin if not exists, and start Superset
 CMD /app/.venv/bin/superset db upgrade && \
     /app/.venv/bin/superset fab create-admin \
         --username admin \
