@@ -13,15 +13,13 @@ if ! superset db upgrade; then
     DB_PORT=$(echo "$DB_URI" | cut -d':' -f3 | cut -d'/' -f1)
     DB_NAME=$(echo "$DB_URI" | awk -F'/' '{print $NF}')
 
-    echo "🔧 Connecting to PostgreSQL to reset alembic_version..."
-    export PGPASSWORD="$DB_PASS"
-    /usr/bin/env PGPASSWORD="$DB_PASS" psql \
-        -h "$DB_HOST" \
-        -U "$DB_USER" \
-        -p "$DB_PORT" \
-        -d "$DB_NAME" \
-        -c "DROP TABLE IF EXISTS alembic_version CASCADE;" || true
-    unset PGPASSWORD
+    echo "🔧 Creating temporary .pgpass file for secure auth..."
+    echo "${DB_HOST}:${DB_PORT}:${DB_NAME}:${DB_USER}:${DB_PASS}" > ~/.pgpass
+    chmod 600 ~/.pgpass
+
+    psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" -c "DROP TABLE IF EXISTS alembic_version CASCADE;" || true
+
+    rm ~/.pgpass
 
     echo "✅ Schema fix complete. Retrying migration..."
     superset db upgrade
