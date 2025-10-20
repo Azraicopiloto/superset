@@ -29,36 +29,30 @@ EXPOSE 8088
 # -------------------------------------------------------
 # Startup sequence
 # -------------------------------------------------------
-CMD \
-    # Extract connection components for psql from DATABASE_URL
-    DB_URI=$(echo "$DATABASE_URL" | sed 's#postgresql+psycopg2://##') && \
-    DB_USER=$(echo "$DB_URI" | cut -d':' -f1) && \
-    DB_PASS=$(echo "$DB_URI" | cut -d':' -f2 | cut -d'@' -f1) && \
-    DB_HOST=$(echo "$DB_URI" | cut -d'@' -f2 | cut -d':' -f1) && \
-    DB_PORT=$(echo "$DB_URI" | cut -d':' -f3 | cut -d'/' -f1) && \
-    DB_NAME=$(echo "$DB_URI" | awk -F'/' '{print $NF}') && \
+CMD bash -c '\
+    DB_URI=$(echo "$DATABASE_URL" | sed "s#postgresql+psycopg2://##"); \
+    DB_USER=$(echo "$DB_URI" | cut -d":" -f1); \
+    DB_PASS=$(echo "$DB_URI" | cut -d":" -f2 | cut -d"@" -f1); \
+    DB_HOST=$(echo "$DB_URI" | cut -d"@" -f2 | cut -d":" -f1); \
+    DB_PORT=$(echo "$DB_URI" | cut -d":" -f3 | cut -d"/" -f1); \
+    DB_NAME=$(echo "$DB_URI" | awk -F"/" "{print \$NF}"); \
     \
     if [ "$DB_RESET" = "1" ]; then \
       echo "⚠️  Force-resetting PostgreSQL public schema..."; \
-      PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" <<'SQL'
-      DROP TABLE IF EXISTS alembic_version CASCADE;
-      DROP SCHEMA IF EXISTS public CASCADE;
-      CREATE SCHEMA public;
-      SQL
-    fi && \
+      PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" -c "DROP TABLE IF EXISTS alembic_version CASCADE; DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"; \
+    fi; \
     \
-    echo "🚀 Running DB migrations..." && \
-    superset db upgrade && \
-    echo "👤 Creating admin user..." && \
+    echo "🚀 Running DB migrations..."; \
+    superset db upgrade; \
+    echo "👤 Creating admin user..."; \
     superset fab create-admin \
         --username admin \
         --firstname Admin \
         --lastname User \
         --email admin@superset.com \
         --password admin \
-        --role Admin --force && \
-    echo "✨ Initializing Superset..." && \
-    superset init && \
-    echo "🌐 Starting Gunicorn..." && \
-    gunicorn --bind 0.0.0.0:${PORT:-8088} "superset.app:create_app()"
-
+        --role Admin --force; \
+    echo "✨ Initializing Superset..."; \
+    superset init; \
+    echo "🌐 Starting Gunicorn..."; \
+    gunicorn --bind 0.0.0.0:${PORT:-8088} "superset.app:create_app()"'
