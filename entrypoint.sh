@@ -1,44 +1,40 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Exit immediately if a command exits with a non-zero status
 set -e
 
 echo "🚀 Starting Superset setup..."
 
-DB_URI=$(echo "$DATABASE_URL" | sed 's#postgresql+psycopg2://##')
-DB_USER=$(echo "$DB_URI" | cut -d':' -f1)
-DB_PASS=$(echo "$DB_URI" | cut -d':' -f2 | cut -d'@' -f1)
-DB_HOST=$(echo "$DB_URI" | cut -d'@' -f2 | cut -d':' -f1)
-DB_PORT=$(echo "$DB_URI" | cut -d':' -f3 | cut -d'/' -f1)
-DB_NAME=$(echo "$DB_URI" | awk -F'/' '{print $NF}')
+# Only run the reset logic if FORCE_RESET is set to '1'
+if [[ "$FORCE_RESET" == "1" ]]; then
+  echo "⚠️ FORCE_RESET detected — dropping and recreating schema..."
 
-echo "🔧 Preparing temporary .pgpass file for secure PostgreSQL auth..."
-echo "${DB_HOST}:${DB_PORT}:${DB_NAME}:${DB_USER}:${DB_PASS}" > ~/.pgpass
-chmod 600 ~/.pgpass
+  # Superset's DATABASE_URL is like: postgresql+psycopg2://...
+  # psql needs a standard URI like: postgresql://...
+  # This command removes the '+psycopg2' part for psql compatibility.
+  # The quotes around the variables are crucial for handling special characters.
+  PSQL_COMPATIBLE_URL="${DATABASE_URL/+psycopg2/}"
 
-# Optional full schema reset
-if [ "$FORCE_RESET" = "1" ]; then
-    echo "⚠️ FORCE_RESET detected — dropping and recreating schema..."
-    psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+  # Execute the schema reset using the compatible URL.
+  # This single command is all that's needed for authentication.
+  psql "$PSQL_COMPATIBLE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+  
+  echo "✅ Schema reset successfully."
 fi
 
-echo "🧩 Running initial DB migrations..."
-if ! superset db upgrade; then
-    echo "⚠️ Migration failed — resetting Alembic version table..."
-    psql -h "$DB_HOST" -U "$DB_USER" -p "$DB_PORT" -d "$DB_NAME" -c "DROP TABLE IF EXISTS alembic_version CASCADE;"
-    superset db upgrade
-fi
+echo "🧩 Running migrations..."
+superset db upgrade
 
-rm -f ~/.pgpass
-
-echo "👤 Creating admin user if not exists..."
+echo "👤 Creating admin user..."
 superset fab create-admin \
-    --username admin \
-    --firstname Admin \
-    --lastname User \
-    --email admin@superset.com \
-    --password admin --force || true
+  --username admin \
+  --firstname Superset \
+  --lastname Admin \
+  --email admin@example.com \
+  --password admin
 
 echo "✨ Initializing Superset..."
 superset init
 
-echo "🌐 Launching Superset on port ${PORT:-8088}..."
-exec gunicorn --bind 0.0.0.0:${PORT:-8088} "superset.app:create_app()"
+echo "🌐 Starting Superset on port ${PORT:-8088}"
+# Use exec to replace the script process with the gunicorn process
+exec gunicorn --bind "0.0.0.0:${PORT:-8088}" --workers 3 --timeout 120 "superset.app:create_app()"
