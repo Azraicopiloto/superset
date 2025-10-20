@@ -3,7 +3,7 @@ FROM apache/superset:latest
 WORKDIR /app
 
 # Copy your custom config file into the container
-COPY superset/superset_config.py /app/superset_config.py
+COPY superset_config.py /app/superset_config.py
 
 ENV SUPERSET_HOME=/app/superset_home
 ENV FLASK_ENV=production
