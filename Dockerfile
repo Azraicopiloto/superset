@@ -1,33 +1,54 @@
+# ---------------------------
+# Apache Superset with optional schema reset
+# ---------------------------
+
 FROM apache/superset:3.1.2
 
+# Switch to root to install system packages
 USER root
+
 WORKDIR /app
 
-# Install PostgreSQL libraries and build tools
-RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+# Install PostgreSQL client & required dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq-dev gcc postgresql-client && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install psycopg2 and Pillow using system Python
-RUN pip install --no-cache-dir --upgrade pip psycopg2-binary Pillow
-
-# Copy Superset config
+# Copy Superset configuration file
 COPY superset_config.py /app/superset_config.py
 
-# Environment
+# ---------------------------
+# Environment Variables
+# ---------------------------
 ENV SUPERSET_HOME=/app/superset_home
 ENV FLASK_DEBUG=0
 ENV SUPERSET_PORT=8088
 ENV SUPERSET_LOAD_EXAMPLES=no
 ENV SUPERSET_CONFIG_PATH=/app/superset_config.py
 
+# ---------------------------
+# Expose the web port
+# ---------------------------
 EXPOSE 8088
 
-# Initialize DB and create admin user
-CMD superset db upgrade && \
+# ---------------------------
+# Command: reset schema (optional), upgrade DB, create admin, start server
+# ---------------------------
+CMD if [ "$DB_RESET" = "1" ]; then \
+      echo "⚠️  Resetting PostgreSQL public schema..."; \
+      psql "$DATABASE_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"; \
+    fi && \
+    echo "🚀 Running DB migrations..." && \
+    superset db upgrade && \
+    echo "👤 Creating admin user..." && \
     superset fab create-admin \
         --username admin \
         --firstname Admin \
         --lastname User \
         --email admin@superset.com \
-        --password admin --role Admin --force && \
+        --password admin \
+        --role Admin --force && \
+    echo "✨ Initializing Superset..." && \
     superset init && \
-    gunicorn --bind 0.0.0.0:$PORT "superset.app:create_app()"
+    echo "🌐 Starting Gunicorn..." && \
+    gunicorn --bind 0.0.0.0:${PORT:-8088} "superset.app:create_app()"
